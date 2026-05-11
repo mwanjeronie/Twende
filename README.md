@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Twende dApp
+
+**Crypto payments for real businesses in Uganda.** Accept SOL and USDT instantly at your clinic, hospital, or business — with automatic conversion to UGX.
+
+Built on Solana. Made for Kampala.
+
+---
+
+## Features
+
+- **Merchant registration** — sign up with email + connect Solana wallet
+- **Solana Pay QR codes** — unique QR for each business, compatible with Phantom
+- **Customer payment page** — `/pay/[merchantId]` for direct payments
+- **Real-time dashboard** — track transactions, revenue by currency, UGX estimates
+- **Full transaction history** — filterable, exportable to CSV
+- **Supabase Auth** — email/password authentication with protected routes
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 16 (App Router) + TypeScript |
+| Styling | Tailwind CSS |
+| Blockchain | Solana Web3.js + SPL Token |
+| Wallets | Phantom, Solflare via `@solana/wallet-adapter` |
+| Database | Supabase (Postgres + Auth) |
+| Payments | Solana Pay protocol |
 
 ## Getting Started
 
-First, run the development server:
+### 1. Clone and install
+
+```bash
+npm install
+```
+
+### 2. Create a Supabase project
+
+1. Go to [supabase.com](https://supabase.com) and create a new project
+2. Run the SQL migration in `supabase/migrations/001_initial_schema.sql` via the Supabase SQL editor
+3. Copy your project URL and anon key
+
+### 3. Set environment variables
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in `.env.local`:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_SOLANA_NETWORK=devnet
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+### 4. Run locally
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Pages
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Route | Description |
+|-------|-------------|
+| `/` | Landing page |
+| `/register` | Business registration (3-step wizard) |
+| `/login` | Sign in |
+| `/dashboard` | Merchant overview + stats |
+| `/dashboard/qr` | Payment QR code |
+| `/dashboard/transactions` | Full transaction history |
+| `/dashboard/profile` | Edit business profile |
+| `/dashboard/settings` | Account settings |
+| `/pay/[merchantId]` | Customer-facing payment page |
 
-## Learn More
+## Database Schema
 
-To learn more about Next.js, take a look at the following resources:
+Run `supabase/migrations/001_initial_schema.sql` in your Supabase SQL editor.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Tables:
+- `merchants` — business profiles (RLS: owners + public read for active)
+- `transactions` — payment records (RLS: owner read + public insert)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deploying to Production
 
-## Deploy on Vercel
+1. Push to GitHub
+2. Connect to [Vercel](https://vercel.com)
+3. Add environment variables in Vercel dashboard
+4. Change `NEXT_PUBLIC_SOLANA_NETWORK` to `mainnet-beta`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+*Built for the Twende dApp project · Kampala, Uganda*
