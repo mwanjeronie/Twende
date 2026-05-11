@@ -10,6 +10,14 @@ export const metadata: Metadata = {
   title: "Twende dApp — Crypto Payments for Ugandan Businesses",
   description: "Accept SOL and USDT payments instantly. Built on Solana. Made for Uganda.",
   keywords: ["Solana", "crypto payments", "Uganda", "Kampala", "USDT", "SOL", "Twende"],
+  icons: {
+    icon: [
+      { url: "/icon.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
