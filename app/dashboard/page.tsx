@@ -19,95 +19,92 @@ export default async function DashboardPage() {
 
   const totalSol = allTx?.filter(t => t.currency === "SOL").reduce((s, t) => s + t.amount, 0) ?? 0;
   const totalUsdt = allTx?.filter(t => t.currency === "USDT").reduce((s, t) => s + t.amount, 0) ?? 0;
-  const totalTx = allTx?.length ?? 0;
   const today = new Date().toISOString().split("T")[0];
   const todayTx = allTx?.filter(t => t.created_at.startsWith(today)).length ?? 0;
   const estUgx = totalSol * 555000 + totalUsdt * 3700;
 
   const stats = [
-    { label: "SOL Received", value: `◎ ${totalSol.toFixed(4)}`, change: "Total confirmed", icon: TrendingUp, color: "from-purple-500 to-blue-500" },
-    { label: "USDT Received", value: `$ ${totalUsdt.toFixed(2)}`, change: "Total confirmed", icon: DollarSign, color: "from-emerald-500 to-teal-500" },
-    { label: "Transactions", value: totalTx.toString(), change: `${todayTx} today`, icon: ArrowLeftRight, color: "from-blue-500 to-violet-500" },
-    { label: "Est. UGX Value", value: formatCurrency(estUgx, "UGX"), change: "Live rate", icon: Activity, color: "from-orange-500 to-pink-500" },
-  ];
-
-  const quickActions = [
-    { label: "Payment QR", sub: "Share with customers", href: "/dashboard/qr", color: "from-purple-500 to-blue-500", icon: QrCode },
-    { label: "Pay Link", sub: "Customer payment page", href: `/pay/${merchant.id}`, color: "from-blue-500 to-cyan-500", icon: ExternalLink, external: true },
-    { label: "All Transactions", sub: "Full history", href: "/dashboard/transactions", color: "from-emerald-500 to-teal-500", icon: ArrowLeftRight },
+    { label: "SOL Received", value: `◎ ${totalSol.toFixed(4)}`, sub: "Total confirmed", icon: TrendingUp },
+    { label: "USDT Received", value: `$ ${totalUsdt.toFixed(2)}`, sub: "Total confirmed", icon: DollarSign },
+    { label: "Transactions", value: String(allTx?.length ?? 0), sub: `${todayTx} today`, icon: ArrowLeftRight },
+    { label: "Est. UGX Value", value: formatCurrency(estUgx, "UGX"), sub: "Live rate", icon: Activity },
   ];
 
   return (
     <div style={{ background: "var(--bg-primary)" }}>
       <DashboardHeader title={merchant.name} subtitle={`${merchant.location} · ${merchant.business_type}`} />
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-5">
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          {stats.map((s) => (
-            <div key={s.label} className="glass rounded-2xl p-5">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+          {stats.map(s => (
+            <div key={s.label} className="card p-5">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-medium text-slate-500">{s.label}</p>
-                <div className={`flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br ${s.color}`}>
-                  <s.icon className="h-4 w-4 text-white" />
+                <p className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>{s.label}</p>
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg brand-btn">
+                  <s.icon className="h-3.5 w-3.5" />
                 </div>
               </div>
-              <p className="text-xl font-black text-white">{s.value}</p>
-              <p className="mt-1 text-xs" style={{ color: "var(--green)" }}>{s.change}</p>
+              <p className="text-xl font-black" style={{ color: "var(--text-primary)" }}>{s.value}</p>
+              <p className="mt-1 text-xs brand-text font-medium">{s.sub}</p>
             </div>
           ))}
         </div>
 
         {/* Quick actions */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {quickActions.map((a) => (
+        <div className="grid sm:grid-cols-3 gap-4">
+          {[
+            { label: "Payment QR", sub: "Share with customers", href: "/dashboard/qr", icon: QrCode },
+            { label: "Pay Link", sub: "Customer payment page", href: `/pay/${merchant.id}`, icon: ExternalLink, external: true },
+            { label: "Transactions", sub: "Full history", href: "/dashboard/transactions", icon: ArrowLeftRight },
+          ].map(a => (
             <Link key={a.label} href={a.href} target={a.external ? "_blank" : undefined}
-              className="glass glass-hover rounded-2xl p-5 flex items-center gap-4">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${a.color} shrink-0`}>
-                <a.icon className="h-5 w-5 text-white" />
+              className="card p-4 flex items-center gap-3 transition-colors"
+              style={{ textDecoration: "none" }}
+              onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => { e.currentTarget.style.borderColor = "var(--border-focus)"; }}
+              onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => { e.currentTarget.style.borderColor = "var(--border)"; }}>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl brand-btn shrink-0">
+                <a.icon className="h-4 w-4" />
               </div>
               <div>
-                <p className="font-semibold text-white text-sm">{a.label}</p>
-                <p className="text-xs text-slate-500">{a.sub}</p>
+                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{a.label}</p>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>{a.sub}</p>
               </div>
-              <ArrowUpRight className="h-4 w-4 text-slate-600 ml-auto" />
+              <ArrowUpRight className="h-4 w-4 ml-auto shrink-0" style={{ color: "var(--text-muted)" }} />
             </Link>
           ))}
         </div>
 
         {/* Recent transactions */}
-        <div className="glass rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--border)" }}>
-            <h2 className="text-sm font-bold text-white">Recent Transactions</h2>
-            <Link href="/dashboard/transactions" className="text-xs font-medium text-purple-400 hover:text-purple-300">View all</Link>
+        <div className="card overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
+            <h2 className="text-sm font-bold">Recent Transactions</h2>
+            <Link href="/dashboard/transactions" className="text-xs font-medium brand-text">View all</Link>
           </div>
           {!recentTx?.length ? (
             <div className="py-14 text-center">
-              <ArrowLeftRight className="h-8 w-8 mx-auto text-slate-700 mb-3" />
-              <p className="text-sm text-slate-500 font-medium">No transactions yet</p>
-              <p className="text-xs text-slate-600 mt-1">Share your QR code to start receiving payments</p>
+              <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>No transactions yet</p>
+              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>Share your QR code to start receiving payments</p>
             </div>
           ) : (
-            <div className="divide-y" style={{ borderColor: "var(--border)" }}>
-              {(recentTx as Transaction[]).map((tx) => (
-                <div key={tx.id} className="flex items-center gap-4 px-6 py-4 hover:bg-white/2 transition-colors">
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-full shrink-0 ${tx.currency === "SOL" ? "bg-purple-500/15" : "bg-emerald-500/15"}`}>
-                    <span className={`text-sm font-bold ${tx.currency === "SOL" ? "text-purple-400" : "text-emerald-400"}`}>
-                      {tx.currency === "SOL" ? "◎" : "$"}
-                    </span>
+            <div>
+              {(recentTx as Transaction[]).map((tx, i) => (
+                <div key={tx.id} className="flex items-center gap-4 px-5 py-3.5"
+                  style={{ borderBottom: i < recentTx.length - 1 ? `1px solid var(--border)` : "none" }}>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full shrink-0"
+                    style={{ background: "var(--bg-secondary)" }}>
+                    <span className="text-sm font-bold brand-text">{tx.currency === "SOL" ? "◎" : "$"}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{tx.payer_name || "Anonymous"}</p>
-                    <p className="text-xs text-slate-500">{formatRelativeTime(tx.created_at)}</p>
+                    <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>{tx.payer_name || "Anonymous"}</p>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>{formatRelativeTime(tx.created_at)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-white">+{formatCurrency(tx.amount, tx.currency)}</p>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${tx.status === "confirmed" ? "text-emerald-400 bg-emerald-400/10" : tx.status === "pending" ? "text-amber-400 bg-amber-400/10" : "text-red-400 bg-red-400/10"}`}>
-                      {tx.status}
-                    </span>
+                    <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>+{formatCurrency(tx.amount, tx.currency)}</p>
+                    <span className={`text-[10px] font-semibold ${tx.status === "confirmed" ? "text-cyan-500" : tx.status === "pending" ? "text-amber-500" : "text-red-500"}`}>{tx.status}</span>
                   </div>
                   {tx.tx_signature && (
-                    <a href={getSolanaExplorerUrl(tx.tx_signature)} target="_blank" rel="noopener noreferrer" className="text-slate-600 hover:text-purple-400 transition-colors">
+                    <a href={getSolanaExplorerUrl(tx.tx_signature)} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)" }}>
                       <ExternalLink className="h-3.5 w-3.5" />
                     </a>
                   )}

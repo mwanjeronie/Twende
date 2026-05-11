@@ -1,249 +1,183 @@
 import Link from "next/link";
-import {
-  Zap, ArrowRight, CheckCircle, Stethoscope,
-  ShoppingBag, Utensils, Building2, QrCode,
-  Shield, Globe, TrendingUp, RefreshCw,
-  ChevronRight,
-} from "lucide-react";
+import Image from "next/image";
+import { ArrowRight, CheckCircle, Stethoscope, ShoppingBag, Building2, Utensils, Zap, Shield, Globe, BarChart2 } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 
 const features = [
-  {
-    icon: Zap,
-    title: "Sub-second settlement",
-    description: "Payments confirm on Solana in under 400ms. No waiting, no delays.",
-  },
-  {
-    icon: Shield,
-    title: "Zero volatility risk",
-    description: "Clinics receive stable UGX via Yellow Card off-ramp. No crypto price exposure.",
-  },
-  {
-    icon: QrCode,
-    title: "Scan & pay",
-    description: "Patients scan a QR code with Phantom. No accounts, no forms, no friction.",
-  },
-  {
-    icon: Globe,
-    title: "SOL & USDT",
-    description: "Accept any Solana-native token. Automatic conversion to UGX for merchants.",
-  },
-  {
-    icon: TrendingUp,
-    title: "Real-time analytics",
-    description: "Every transaction tracked live. Revenue in SOL, USDT, and UGX equivalents.",
-  },
-  {
-    icon: RefreshCw,
-    title: "Fiat off-ramp",
-    description: "Yellow Card and local liquidity providers convert crypto to UGX instantly.",
-  },
+  { icon: Zap, title: "Instant settlement", desc: "Transactions confirm on Solana in under a second. Funds arrive immediately." },
+  { icon: Shield, title: "Zero volatility risk", desc: "Clinics receive stable UGX via off-ramp partners. No crypto exposure." },
+  { icon: Globe, title: "SOL & USDT", desc: "Accept any Solana-native token. Automatic conversion to UGX for merchants." },
+  { icon: BarChart2, title: "Live analytics", desc: "Every transaction tracked in real time. Revenue in SOL, USDT, and UGX." },
 ];
 
 const partners = [
-  { name: "Solana Medical Services", type: "Clinic", location: "Kawempe Kazo", icon: Stethoscope, active: true },
-  { name: "Ram Medical Centre", type: "Medical Centre", location: "Kampala", icon: Stethoscope, active: true },
-  { name: "Span Hospital", type: "Hospital", location: "Kisaasi", icon: Building2, active: true },
-  { name: "Hive Liquor Store", type: "Retail", location: "Kyanja", icon: ShoppingBag, active: true },
-  { name: "Ringroad Pub", type: "Restaurant", location: "Kyanja", icon: Utensils, active: true },
+  { name: "Solana Medical Services", type: "Clinic", location: "Kawempe Kazo", icon: Stethoscope },
+  { name: "Ram Medical Centre", type: "Medical Centre", location: "Kampala", icon: Stethoscope },
+  { name: "Span Hospital", type: "Hospital", location: "Kisaasi", icon: Building2 },
+  { name: "Hive Liquor Store", type: "Retail", location: "Kyanja", icon: ShoppingBag },
+  { name: "Ringroad Pub", type: "Restaurant", location: "Kyanja", icon: Utensils },
 ];
 
 const steps = [
-  { n: "01", title: "Register your business", desc: "Sign up, add your Solana wallet address, and you're live in under 5 minutes." },
-  { n: "02", title: "Share your QR code", desc: "Display it at your counter, on receipts, or share the payment link digitally." },
-  { n: "03", title: "Receive payments instantly", desc: "Patients scan, connect Phantom, and pay. Funds arrive in under a second." },
-];
-
-const stats = [
-  { value: "5+", label: "Partner businesses" },
-  { value: "<1s", label: "Settlement time" },
-  { value: "2", label: "Tokens accepted" },
-  { value: "0", label: "Setup fees" },
+  { n: "1", title: "Register", desc: "Sign up, connect your Solana wallet, and go live in minutes." },
+  { n: "2", title: "Share your QR", desc: "Display your QR code at your counter or share the payment link." },
+  { n: "3", title: "Get paid", desc: "Patients scan and pay. Funds arrive in under a second." },
 ];
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
+    <div style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}>
       <Navbar />
 
-      {/* ── Hero ── */}
-      <section className="gradient-hero relative overflow-hidden pt-20 pb-28 sm:pt-28 sm:pb-36">
-        {/* Orbs */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/4 left-1/4 h-96 w-96 rounded-full bg-purple-600/10 blur-3xl animate-pulse-slow" />
-          <div className="absolute bottom-1/4 right-1/4 h-64 w-64 rounded-full bg-blue-600/10 blur-3xl animate-pulse-slow" style={{ animationDelay: "1.5s" }} />
-        </div>
-
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-          {/* Badge */}
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-4 py-1.5 text-sm font-medium text-purple-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
+      {/* Hero */}
+      <section className="py-24 sm:py-32">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 text-center">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold" style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+            <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
             Built on Solana · Kampala, Uganda
           </div>
 
-          <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-7xl leading-[1.1]">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] mb-6">
             Crypto payments for<br />
-            <span className="gradient-twende-text">real healthcare</span>
+            <span className="brand-text">real healthcare</span>
           </h1>
 
-          <p className="mt-6 text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
-            Twende enables clinics, hospitals, and businesses across Kampala to accept SOL and USDT — with instant UGX conversion. No banks, no delays.
+          <p className="text-lg max-w-2xl mx-auto mb-10" style={{ color: "var(--text-secondary)" }}>
+            Twende enables clinics, hospitals, and businesses in Kampala to accept SOL and USDT — with instant conversion to UGX. No banks, no delays.
           </p>
 
-          <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/register"
-              className="inline-flex items-center justify-center gap-2 rounded-xl gradient-twende px-8 py-4 text-base font-bold text-white shadow-lg hover:opacity-90 transition-opacity active:scale-[0.98]"
-            >
-              Register your business
-              <ArrowRight className="h-4 w-4" />
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10">
+            <Link href="/register" className="brand-btn inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-sm">
+              Register your business <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link
-              href="/#how-it-works"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-white hover:bg-white/10 transition-colors active:scale-[0.98]"
-            >
+            <Link href="/#how-it-works"
+              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-sm font-semibold transition-colors"
+              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)", background: "var(--bg-secondary)" }}>
               See how it works
             </Link>
           </div>
 
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-sm text-slate-500">
-            {["Free to register", "No monthly fees", "Instant payouts"].map((t) => (
+          <div className="flex flex-wrap items-center justify-center gap-5 text-sm" style={{ color: "var(--text-muted)" }}>
+            {["Free to register", "No monthly fees", "Instant payouts"].map(t => (
               <span key={t} className="flex items-center gap-1.5">
-                <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
-                <span className="text-slate-400">{t}</span>
+                <CheckCircle className="h-3.5 w-3.5 text-cyan-500" />
+                <span style={{ color: "var(--text-secondary)" }}>{t}</span>
               </span>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Stats ── */}
-      <section className="border-y border-white/5 py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
-            {stats.map((s) => (
-              <div key={s.label} className="text-center">
-                <p className="text-4xl font-black gradient-twende-text">{s.value}</p>
-                <p className="mt-1.5 text-sm text-slate-500">{s.label}</p>
+      {/* Stats */}
+      <section style={{ borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
+            {[["5+", "Partner businesses"], ["<1s", "Settlement time"], ["2", "Tokens accepted"], ["0", "Setup fees"]].map(([v, l]) => (
+              <div key={l}>
+                <p className="text-3xl font-black brand-text">{v}</p>
+                <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{l}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Features ── */}
-      <section id="features" className="py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-black text-white sm:text-4xl">Built for the real world</h2>
-            <p className="mt-4 text-slate-400 text-lg">Everything a Kampala business needs to go crypto.</p>
+      {/* Features */}
+      <section id="features" className="py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl font-black">Built for the real world</h2>
+            <p className="mt-3 text-base" style={{ color: "var(--text-secondary)" }}>Everything a Kampala business needs to go crypto.</p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((f) => (
-              <div key={f.title} className="glass glass-hover rounded-2xl p-6">
-                <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl gradient-twende">
-                  <f.icon className="h-5 w-5 text-white" />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {features.map(f => (
+              <div key={f.title} className="card p-6">
+                <div className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-xl brand-btn">
+                  <f.icon className="h-4 w-4" />
                 </div>
-                <h3 className="text-base font-bold text-white mb-2">{f.title}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">{f.description}</p>
+                <h3 className="text-sm font-bold mb-1.5">{f.title}</h3>
+                <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{f.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── How it works ── */}
-      <section id="how-it-works" className="py-24 border-t border-white/5">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-black text-white sm:text-4xl">Up and running in minutes</h2>
+      {/* How it works */}
+      <section id="how-it-works" className="py-20" style={{ borderTop: "1px solid var(--border)" }}>
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl font-black">Up and running in minutes</h2>
           </div>
           <div className="grid gap-6 md:grid-cols-3">
             {steps.map((s, i) => (
-              <div key={s.n} className="relative">
-                {i < 2 && (
-                  <div className="hidden md:block absolute top-8 left-[calc(100%-0px)] w-full h-px bg-gradient-to-r from-purple-500/30 to-transparent z-0" />
-                )}
-                <div className="glass rounded-2xl p-6 relative z-10 text-center">
-                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl gradient-twende">
-                    <span className="text-xl font-black text-white">{s.n}</span>
-                  </div>
-                  <h3 className="text-base font-bold text-white mb-2">{s.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed">{s.desc}</p>
+              <div key={s.n} className="card p-7 text-center">
+                <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full brand-btn text-lg font-black">
+                  {s.n}
                 </div>
+                <h3 className="text-base font-bold mb-2">{s.title}</h3>
+                <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{s.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Partners ── */}
-      <section id="partners" className="py-24 border-t border-white/5">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-black text-white sm:text-4xl">Live in Kampala</h2>
-            <p className="mt-4 text-slate-400">Real businesses already using Twende today.</p>
+      {/* Partners */}
+      <section id="partners" className="py-20" style={{ borderTop: "1px solid var(--border)" }}>
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl font-black">Live in Kampala</h2>
+            <p className="mt-3 text-base" style={{ color: "var(--text-secondary)" }}>Real businesses already using Twende today.</p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {partners.map((p) => (
-              <div key={p.name} className="glass glass-hover rounded-2xl p-5 flex items-center gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl gradient-twende">
-                  <p.icon className="h-6 w-6 text-white" />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {partners.map(p => (
+              <div key={p.name} className="card p-5 flex items-center gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl brand-btn">
+                  <p.icon className="h-5 w-5" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-white text-sm truncate">{p.name}</p>
-                  <p className="text-xs text-slate-500">{p.type} · {p.location}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{p.name}</p>
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>{p.type} · {p.location}</p>
                 </div>
-                <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span className="ml-auto h-2 w-2 rounded-full bg-cyan-400 shrink-0 animate-pulse" />
               </div>
             ))}
-            <div className="glass rounded-2xl p-5 flex flex-col items-center justify-center text-center border-dashed border border-white/10">
-              <p className="text-sm font-medium text-slate-400">Your business</p>
-              <p className="text-xs text-slate-600 mt-0.5">could be next</p>
-              <Link href="/register" className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-purple-400 hover:text-purple-300">
-                Join now <ChevronRight className="h-3 w-3" />
+            <div className="card p-5 flex flex-col items-center justify-center text-center" style={{ borderStyle: "dashed" }}>
+              <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Your business next?</p>
+              <Link href="/register" className="mt-2 inline-flex items-center gap-1 text-sm font-bold brand-text hover:opacity-80">
+                Join now <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section className="py-24 border-t border-white/5">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
-          <div className="gradient-card rounded-3xl p-10 sm:p-14 glow-purple">
-            <h2 className="text-3xl font-black text-white sm:text-4xl mb-4">
-              Ready to accept crypto payments?
-            </h2>
-            <p className="text-slate-400 text-lg mb-8">
-              Join the Kampala businesses already on Twende. Free to start.
-            </p>
-            <Link
-              href="/register"
-              className="inline-flex items-center justify-center gap-2 rounded-xl gradient-twende px-8 py-4 text-base font-bold text-white hover:opacity-90 transition-opacity"
-            >
-              Register your business
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
+      {/* CTA */}
+      <section className="py-20" style={{ borderTop: "1px solid var(--border)" }}>
+        <div className="mx-auto max-w-2xl px-4 sm:px-6 text-center">
+          <Image src="/logo.png" alt="Twende dApp" width={56} height={56} className="mx-auto mb-6 rounded-2xl" />
+          <h2 className="text-3xl font-black mb-4">Ready to start?</h2>
+          <p className="text-base mb-8" style={{ color: "var(--text-secondary)" }}>
+            Join the Kampala businesses on Twende. Free to start, no monthly fees.
+          </p>
+          <Link href="/register" className="brand-btn inline-flex items-center gap-2 px-8 py-4 rounded-xl text-sm">
+            Register your business <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer className="border-t border-white/5 py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-twende">
-                <Zap className="h-4 w-4 text-white" />
-              </div>
-              <span className="font-bold text-white">Twende dApp</span>
-            </div>
-            <p className="text-sm text-slate-600">Built on Solana · Kampala, Uganda · © 2026</p>
-            <div className="flex gap-4 text-sm text-slate-600">
-              <Link href="/login" className="hover:text-slate-400 transition-colors">Sign in</Link>
-              <Link href="/register" className="hover:text-slate-400 transition-colors">Register</Link>
-            </div>
+      {/* Footer */}
+      <footer className="py-10" style={{ borderTop: "1px solid var(--border)" }}>
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <Link href="/" className="flex items-center gap-2">
+            <Image src="/logo.png" alt="Twende" width={28} height={28} className="rounded-lg" />
+            <span className="text-sm font-bold">Twende dApp</span>
+          </Link>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>Built on Solana · Kampala, Uganda · © 2026</p>
+          <div className="flex gap-4 text-xs" style={{ color: "var(--text-muted)" }}>
+            <Link href="/login" className="hover:underline">Sign in</Link>
+            <Link href="/register" className="hover:underline">Register</Link>
           </div>
         </div>
       </footer>
