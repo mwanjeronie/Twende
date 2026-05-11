@@ -19,7 +19,6 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full" style={{ background: "var(--bg-primary)", borderBottom: "1px solid var(--border)" }}>
       <nav className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="flex h-16 items-center justify-between gap-4">
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <Image src="/logo.png" alt="Twende dApp" width={36} height={36} className="rounded-lg" />
             <span className="text-base font-bold" style={{ color: "var(--text-primary)" }}>
@@ -27,34 +26,21 @@ export function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-6">
             {links.map(l => (
-              <Link key={l.href} href={l.href} className="text-sm font-medium transition-colors" style={{ color: "var(--text-secondary)" }}
-                onMouseEnter={e => (e.currentTarget.style.color = "var(--text-primary)")}
-                onMouseLeave={e => (e.currentTarget.style.color = "var(--text-secondary)")}>
-                {l.label}
-              </Link>
+              <Link key={l.href} href={l.href} className="nav-link text-sm font-medium">{l.label}</Link>
             ))}
           </div>
 
-          {/* Actions */}
           <div className="hidden md:flex items-center gap-2">
             <ThemeToggle />
-            <Link href="/login" className="px-4 py-2 text-sm font-semibold rounded-xl transition-colors" style={{ color: "var(--text-secondary)" }}
-              onMouseEnter={e => (e.currentTarget.style.color = "var(--text-primary)")}
-              onMouseLeave={e => (e.currentTarget.style.color = "var(--text-secondary)")}>
-              Sign in
-            </Link>
-            <Link href="/register" className="brand-btn px-4 py-2 text-sm rounded-xl">
-              Get started
-            </Link>
+            <Link href="/login" className="nav-link px-4 py-2 text-sm font-semibold rounded-xl">Sign in</Link>
+            <Link href="/register" className="brand-btn px-4 py-2 text-sm rounded-xl">Get started</Link>
           </div>
 
-          {/* Mobile */}
           <div className="md:hidden flex items-center gap-2">
             <ThemeToggle />
-            <button onClick={() => setOpen(!open)} style={{ color: "var(--text-secondary)" }}>
+            <button onClick={() => setOpen(!open)} className="nav-link p-1">
               {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
@@ -64,8 +50,7 @@ export function Navbar() {
           <div className="md:hidden py-4 space-y-1 border-t" style={{ borderColor: "var(--border)" }}>
             {links.map(l => (
               <Link key={l.href} href={l.href} onClick={() => setOpen(false)}
-                className="block px-3 py-2 text-sm font-medium rounded-lg transition-colors"
-                style={{ color: "var(--text-secondary)" }}>
+                className="nav-link block px-3 py-2 text-sm font-medium rounded-lg subtle-hover">
                 {l.label}
               </Link>
             ))}

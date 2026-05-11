@@ -35,15 +35,15 @@ export function DashboardSidebar() {
         <ThemeToggle />
       </div>
 
-      <nav className="flex-1 p-2 space-y-0.5">
+      <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
         {nav.map(item => {
           const active = pathname === item.href;
           return (
             <Link key={item.href} href={item.href}
-              className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all", active ? "brand-btn" : "")}
-              style={!active ? { color: "var(--text-secondary)" } : {}}
-              onMouseEnter={e => { if (!active) e.currentTarget.style.background = "var(--bg-secondary)"; }}
-              onMouseLeave={e => { if (!active) e.currentTarget.style.background = ""; }}>
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
+                active ? "brand-btn" : "nav-link subtle-hover"
+              )}>
               <item.icon className="h-4 w-4 shrink-0" />
               {item.label}
             </Link>
@@ -53,10 +53,7 @@ export function DashboardSidebar() {
 
       <div className="p-2 border-t" style={{ borderColor: "var(--border)" }}>
         <button onClick={handleSignOut}
-          className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
-          style={{ color: "var(--text-muted)" }}
-          onMouseEnter={e => { e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.background = "rgba(239,68,68,0.06)"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = ""; }}>
+          className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium nav-link subtle-hover">
           <LogOut className="h-4 w-4" />
           Sign Out
         </button>

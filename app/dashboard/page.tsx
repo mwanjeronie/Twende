@@ -59,10 +59,8 @@ export default async function DashboardPage() {
             { label: "Transactions", sub: "Full history", href: "/dashboard/transactions", icon: ArrowLeftRight },
           ].map(a => (
             <Link key={a.label} href={a.href} target={a.external ? "_blank" : undefined}
-              className="card p-4 flex items-center gap-3 transition-colors"
-              style={{ textDecoration: "none" }}
-              onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => { e.currentTarget.style.borderColor = "var(--border-focus)"; }}
-              onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => { e.currentTarget.style.borderColor = "var(--border)"; }}>
+              className="card card-hover p-4 flex items-center gap-3"
+              style={{ textDecoration: "none" }}>
               <div className="flex h-9 w-9 items-center justify-center rounded-xl brand-btn shrink-0">
                 <a.icon className="h-4 w-4" />
               </div>

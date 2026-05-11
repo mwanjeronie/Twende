@@ -105,3 +105,31 @@ body {
 }
 
 html { scroll-behavior: smooth; }
+
+/* ── Hover utilities (theme-aware, no JS needed) ── */
+.card-hover {
+  transition: border-color 0.15s;
+}
+.card-hover:hover {
+  border-color: var(--border-focus) !important;
+}
+
+.nav-link {
+  color: var(--text-secondary);
+  transition: color 0.15s;
+}
+.nav-link:hover {
+  color: var(--text-primary);
+}
+
+.subtle-hover {
+  transition: background 0.15s;
+}
+.subtle-hover:hover {
+  background: var(--bg-secondary) !important;
+}
+
+select option {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
