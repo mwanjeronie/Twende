@@ -72,7 +72,7 @@ export default function RegisterPage() {
     try {
       const supabase = createClient();
 
-      // Create auth user
+      // Step 1: Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
@@ -81,19 +81,22 @@ export default function RegisterPage() {
       if (authError) throw authError;
       if (!authData.user) throw new Error("Failed to create account");
 
-      // Create merchant profile
-      const { error: merchantError } = await supabase.from("merchants").insert({
-        user_id: authData.user.id,
-        name: form.businessName,
-        business_type: form.businessType,
-        location: form.location,
-        phone: form.phone || null,
-        wallet_address: form.walletAddress,
-        description: form.description || null,
-        is_active: true,
-        twende_discount: 30,
+      // Step 2: Create merchant profile via server API route
+      // (uses server-side session so RLS auth.uid() resolves correctly)
+      const res = await fetch("/api/merchants/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.businessName,
+          business_type: form.businessType,
+          location: form.location,
+          phone: form.phone || null,
+          wallet_address: form.walletAddress,
+          description: form.description || null,
+        }),
       });
-      if (merchantError) throw merchantError;
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to create business profile");
 
       setStep(3);
     } catch (err: unknown) {
