@@ -2,44 +2,34 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Download, Share2, Copy, Check, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Merchant } from "@/types";
 import QRCode from "qrcode";
 import toast from "react-hot-toast";
 
-interface MerchantQRCodeProps {
-  merchant: Merchant;
-}
-
-export function MerchantQRCode({ merchant }: MerchantQRCodeProps) {
+export function MerchantQRCode({ merchant }: { merchant: Merchant }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
 
   const payUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/pay/${merchant.id}`;
-  const solanpayUrl = `solana:${merchant.wallet_address}?label=${encodeURIComponent(merchant.name)}&message=${encodeURIComponent("Pay with Twende")}`;
+  const solanaPayUrl = `solana:${merchant.wallet_address}?label=${encodeURIComponent(merchant.name)}&message=${encodeURIComponent("Pay with Twende")}`;
 
   useEffect(() => {
     if (canvasRef.current) {
-      QRCode.toCanvas(canvasRef.current, solanpayUrl, {
-        width: 280,
+      QRCode.toCanvas(canvasRef.current, solanaPayUrl, {
+        width: 260,
         margin: 2,
-        color: {
-          dark: "#1e1b4b",
-          light: "#ffffff",
-        },
+        color: { dark: "#1a0533", light: "#ffffff" },
         errorCorrectionLevel: "H",
       });
     }
-  }, [solanpayUrl]);
+  }, [solanaPayUrl]);
 
   const handleDownload = () => {
     if (!canvasRef.current) return;
-    const link = document.createElement("a");
-    link.download = `twende-qr-${merchant.name.toLowerCase().replace(/\s+/g, "-")}.png`;
-    link.href = canvasRef.current.toDataURL();
-    link.click();
+    const a = document.createElement("a");
+    a.download = `twende-${merchant.name.toLowerCase().replace(/\s+/g, "-")}-qr.png`;
+    a.href = canvasRef.current.toDataURL();
+    a.click();
     toast.success("QR code downloaded!");
   };
 
@@ -52,11 +42,7 @@ export function MerchantQRCode({ merchant }: MerchantQRCodeProps) {
 
   const handleShare = async () => {
     if (navigator.share) {
-      await navigator.share({
-        title: `Pay ${merchant.name} with Twende`,
-        text: `Use this link to pay ${merchant.name} with SOL or USDT`,
-        url: payUrl,
-      });
+      await navigator.share({ title: `Pay ${merchant.name} with Twende`, url: payUrl });
     } else {
       handleCopyLink();
     }
@@ -64,117 +50,92 @@ export function MerchantQRCode({ merchant }: MerchantQRCodeProps) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      {/* QR Code Card */}
-      <Card className="border-slate-100">
-        <CardHeader>
-          <CardTitle className="text-base">Your Solana Pay QR Code</CardTitle>
-          <CardDescription>Customers scan this with Phantom wallet to pay you instantly</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center gap-4">
-          <div className="relative rounded-2xl bg-white p-4 shadow-lg border border-slate-100">
-            {/* Logo overlay */}
-            <div className="relative">
-              <canvas ref={canvasRef} className="rounded-xl" />
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 shadow-lg border-2 border-white">
-                  <span className="text-lg font-black text-white">T</span>
-                </div>
-              </div>
+      {/* QR */}
+      <div className="glass rounded-2xl p-6 flex flex-col items-center gap-5">
+        <div>
+          <h2 className="text-base font-bold text-white mb-1">Your Payment QR Code</h2>
+          <p className="text-xs text-slate-500">Solana Pay compatible — works with Phantom</p>
+        </div>
+
+        <div className="relative rounded-2xl bg-white p-4 shadow-2xl glow-purple">
+          <canvas ref={canvasRef} className="rounded-xl block" />
+          {/* Twende logo overlay */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl gradient-twende shadow-lg border-2 border-white">
+              <span className="text-xl font-black text-white">T</span>
             </div>
           </div>
-          <div className="text-center">
-            <p className="font-semibold text-slate-900">{merchant.name}</p>
-            <p className="text-xs text-slate-500">{merchant.location}</p>
-          </div>
-          <div className="flex gap-2 w-full">
-            <Button variant="outline" size="sm" className="flex-1" onClick={handleDownload}>
-              <Download className="h-4 w-4" />
-              Download
-            </Button>
-            <Button size="sm" className="flex-1" onClick={handleShare}>
-              <Share2 className="h-4 w-4" />
-              Share
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Info Card */}
+        <div className="text-center">
+          <p className="font-bold text-white">{merchant.name}</p>
+          <p className="text-xs text-slate-500">{merchant.location}</p>
+        </div>
+
+        <div className="flex gap-2 w-full">
+          <button onClick={handleDownload}
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-white/10 py-2.5 text-xs font-semibold text-slate-300 hover:bg-white/5 transition-colors">
+            <Download className="h-3.5 w-3.5" /> Download
+          </button>
+          <button onClick={handleShare}
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl gradient-twende py-2.5 text-xs font-bold text-white hover:opacity-90 transition-opacity">
+            <Share2 className="h-3.5 w-3.5" /> Share
+          </button>
+        </div>
+      </div>
+
+      {/* Info */}
       <div className="space-y-4">
         {/* Payment link */}
-        <Card className="border-slate-100">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Your Payment Link</CardTitle>
-            <CardDescription>Share this URL directly with customers</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
-              <code className="flex-1 text-xs text-slate-700 truncate font-mono">{payUrl}</code>
-              <Button variant="ghost" size="icon" className="shrink-0 h-7 w-7" onClick={handleCopyLink}>
-                {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-              </Button>
+        <div className="glass rounded-2xl p-5">
+          <h3 className="text-sm font-bold text-white mb-1">Payment Link</h3>
+          <p className="text-xs text-slate-500 mb-3">Share this URL — patients can pay without scanning</p>
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 border border-white/8" style={{ background: "var(--bg-input)" }}>
+            <code className="flex-1 text-xs text-slate-400 font-mono truncate">{payUrl}</code>
+            <button onClick={handleCopyLink} className="shrink-0 text-slate-500 hover:text-white transition-colors">
+              {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+            </button>
+          </div>
+          <a href={payUrl} target="_blank" rel="noopener noreferrer"
+            className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-white/10 py-2 text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
+            <ExternalLink className="h-3.5 w-3.5" /> Preview
+          </a>
+        </div>
+
+        {/* Tokens */}
+        <div className="glass rounded-2xl p-5">
+          <h3 className="text-sm font-bold text-white mb-3">Accepted</h3>
+          <div className="flex gap-2">
+            <span className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: "rgba(153,69,255,0.15)", color: "#C084FC" }}>◎ SOL</span>
+            <span className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: "rgba(20,241,149,0.1)", color: "#14F195" }}>$ USDT</span>
+          </div>
+        </div>
+
+        {/* Discount */}
+        <div className="glass rounded-2xl p-5 border border-purple-500/20" style={{ background: "rgba(153,69,255,0.06)" }}>
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-twende shrink-0">
+              <span className="text-sm font-black text-white">%</span>
             </div>
-            <a href={payUrl} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" className="mt-3 w-full">
-                <ExternalLink className="h-4 w-4" />
-                Preview payment page
-              </Button>
-            </a>
-          </CardContent>
-        </Card>
-
-        {/* Accepted currencies */}
-        <Card className="border-slate-100">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Accepted Currencies</CardTitle>
-          </CardHeader>
-          <CardContent className="flex gap-2">
-            <Badge variant="sol" className="py-1.5 px-3">◎ SOL</Badge>
-            <Badge variant="usdt" className="py-1.5 px-3">$ USDT</Badge>
-          </CardContent>
-        </Card>
-
-        {/* Discount info */}
-        <Card className="border-blue-100 bg-blue-50">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white text-sm font-bold shrink-0">
-                %
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-blue-900">Twende Discount Active</p>
-                <p className="text-xs text-blue-700 mt-0.5">
-                  Offer a {merchant.twende_discount}% discount to customers who pay via Twende.
-                  This is manually applied at your counter.
-                </p>
-              </div>
+            <div>
+              <p className="text-sm font-bold text-purple-300">{merchant.twende_discount}% Twende Discount</p>
+              <p className="text-xs text-slate-500 mt-0.5">Applied manually at your counter for patients who pay via Twende.</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* How to use */}
-        <Card className="border-slate-100">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">How customers pay</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ol className="space-y-2.5">
-              {[
-                "Customer scans the QR code with Phantom wallet",
-                "They enter the payment amount in SOL or USDT",
-                "Payment confirms on Solana in under 1 second",
-                "You see it instantly in your dashboard",
-              ].map((step, i) => (
-                <li key={i} className="flex items-start gap-3 text-xs text-slate-600">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-violet-600 text-white text-[10px] font-bold">
-                    {i + 1}
-                  </span>
-                  {step}
-                </li>
-              ))}
-            </ol>
-          </CardContent>
-        </Card>
+        {/* How it works */}
+        <div className="glass rounded-2xl p-5">
+          <h3 className="text-sm font-bold text-white mb-3">How patients pay</h3>
+          <ol className="space-y-2.5">
+            {["Patient scans QR with Phantom wallet", "Enters payment amount in SOL or USDT", "Confirms — settles on Solana in <1 second", "Appears instantly in your dashboard"].map((s, i) => (
+              <li key={i} className="flex items-start gap-3 text-xs text-slate-400">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full gradient-twende text-[10px] font-black text-white">{i + 1}</span>
+                {s}
+              </li>
+            ))}
+          </ol>
+        </div>
       </div>
     </div>
   );

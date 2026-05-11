@@ -1,233 +1,121 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import {
-  TrendingUp, ArrowLeftRight, DollarSign, Activity,
-  ExternalLink, ArrowUpRight,
-} from "lucide-react";
+import { TrendingUp, ArrowLeftRight, DollarSign, Activity, ExternalLink, ArrowUpRight, QrCode } from "lucide-react";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatRelativeTime, getSolanaExplorerUrl } from "@/lib/utils";
 import { Transaction } from "@/types";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-
-async function getDashboardData(merchantId: string) {
-  const supabase = await createClient();
-
-  const { data: transactions } = await supabase
-    .from("transactions")
-    .select("*")
-    .eq("merchant_id", merchantId)
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  const { data: allTransactions } = await supabase
-    .from("transactions")
-    .select("amount, currency, created_at")
-    .eq("merchant_id", merchantId)
-    .eq("status", "confirmed");
-
-  const totalSol = allTransactions?.filter((t) => t.currency === "SOL").reduce((s, t) => s + t.amount, 0) ?? 0;
-  const totalUsdt = allTransactions?.filter((t) => t.currency === "USDT").reduce((s, t) => s + t.amount, 0) ?? 0;
-  const today = new Date().toISOString().split("T")[0];
-  const todayCount = allTransactions?.filter((t) => t.created_at.startsWith(today)).length ?? 0;
-
-  return {
-    transactions: (transactions ?? []) as Transaction[],
-    stats: {
-      total_sol: totalSol,
-      total_usdt: totalUsdt,
-      total_transactions: allTransactions?.length ?? 0,
-      transactions_today: todayCount,
-      estimated_ugx: totalSol * 390000 + totalUsdt * 3700,
-    },
-  };
-}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: merchant } = await supabase
-    .from("merchants")
-    .select("*")
-    .eq("user_id", user.id)
-    .single();
-
+  const { data: merchant } = await supabase.from("merchants").select("*").eq("user_id", user.id).single();
   if (!merchant) redirect("/register");
 
-  const { transactions, stats } = await getDashboardData(merchant.id);
+  const { data: allTx } = await supabase.from("transactions").select("amount, currency, created_at, status").eq("merchant_id", merchant.id).eq("status", "confirmed");
+  const { data: recentTx } = await supabase.from("transactions").select("*").eq("merchant_id", merchant.id).order("created_at", { ascending: false }).limit(8);
 
-  const statCards = [
-    {
-      title: "Total SOL Received",
-      value: formatCurrency(stats.total_sol, "SOL"),
-      change: "+12%",
-      icon: TrendingUp,
-      color: "from-blue-500 to-violet-500",
-      bg: "bg-blue-50",
-    },
-    {
-      title: "Total USDT Received",
-      value: formatCurrency(stats.total_usdt, "USDT"),
-      change: "+8%",
-      icon: DollarSign,
-      color: "from-emerald-500 to-teal-500",
-      bg: "bg-emerald-50",
-    },
-    {
-      title: "Total Transactions",
-      value: stats.total_transactions.toString(),
-      change: `+${stats.transactions_today} today`,
-      icon: ArrowLeftRight,
-      color: "from-violet-500 to-pink-500",
-      bg: "bg-violet-50",
-    },
-    {
-      title: "Est. UGX Value",
-      value: formatCurrency(stats.estimated_ugx, "UGX"),
-      change: "Live rate",
-      icon: Activity,
-      color: "from-orange-500 to-red-500",
-      bg: "bg-orange-50",
-    },
+  const totalSol = allTx?.filter(t => t.currency === "SOL").reduce((s, t) => s + t.amount, 0) ?? 0;
+  const totalUsdt = allTx?.filter(t => t.currency === "USDT").reduce((s, t) => s + t.amount, 0) ?? 0;
+  const totalTx = allTx?.length ?? 0;
+  const today = new Date().toISOString().split("T")[0];
+  const todayTx = allTx?.filter(t => t.created_at.startsWith(today)).length ?? 0;
+  const estUgx = totalSol * 555000 + totalUsdt * 3700;
+
+  const stats = [
+    { label: "SOL Received", value: `◎ ${totalSol.toFixed(4)}`, change: "Total confirmed", icon: TrendingUp, color: "from-purple-500 to-blue-500" },
+    { label: "USDT Received", value: `$ ${totalUsdt.toFixed(2)}`, change: "Total confirmed", icon: DollarSign, color: "from-emerald-500 to-teal-500" },
+    { label: "Transactions", value: totalTx.toString(), change: `${todayTx} today`, icon: ArrowLeftRight, color: "from-blue-500 to-violet-500" },
+    { label: "Est. UGX Value", value: formatCurrency(estUgx, "UGX"), change: "Live rate", icon: Activity, color: "from-orange-500 to-pink-500" },
+  ];
+
+  const quickActions = [
+    { label: "Payment QR", sub: "Share with customers", href: "/dashboard/qr", color: "from-purple-500 to-blue-500", icon: QrCode },
+    { label: "Pay Link", sub: "Customer payment page", href: `/pay/${merchant.id}`, color: "from-blue-500 to-cyan-500", icon: ExternalLink, external: true },
+    { label: "All Transactions", sub: "Full history", href: "/dashboard/transactions", color: "from-emerald-500 to-teal-500", icon: ArrowLeftRight },
   ];
 
   return (
-    <div>
-      <DashboardHeader
-        title={`Welcome back, ${merchant.name}`}
-        subtitle={`${merchant.location} · ${merchant.business_type}`}
-      />
-
+    <div style={{ background: "var(--bg-primary)" }}>
+      <DashboardHeader title={merchant.name} subtitle={`${merchant.location} · ${merchant.business_type}`} />
       <div className="p-6 space-y-6">
+
         {/* Stats */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {statCards.map((stat) => (
-            <Card key={stat.title} className="border-slate-100">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-medium text-slate-500">{stat.title}</p>
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${stat.color}`}>
-                    <stat.icon className="h-4 w-4 text-white" />
-                  </div>
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+          {stats.map((s) => (
+            <div key={s.label} className="glass rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-medium text-slate-500">{s.label}</p>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br ${s.color}`}>
+                  <s.icon className="h-4 w-4 text-white" />
                 </div>
-                <p className="text-xl font-bold text-slate-900">{stat.value}</p>
-                <p className="mt-1 text-xs text-emerald-600 font-medium">{stat.change}</p>
-              </CardContent>
-            </Card>
+              </div>
+              <p className="text-xl font-black text-white">{s.value}</p>
+              <p className="mt-1 text-xs" style={{ color: "var(--green)" }}>{s.change}</p>
+            </div>
           ))}
         </div>
 
         {/* Quick actions */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Link href="/dashboard/qr">
-            <Card className="border-slate-100 hover:border-blue-200 hover:shadow-md transition-all cursor-pointer">
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600">
-                  <Activity className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900 text-sm">View Payment QR</p>
-                  <p className="text-xs text-slate-500">Share with customers</p>
-                </div>
-                <ArrowUpRight className="h-4 w-4 text-slate-300 ml-auto" />
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href={`/pay/${merchant.id}`} target="_blank">
-            <Card className="border-slate-100 hover:border-violet-200 hover:shadow-md transition-all cursor-pointer">
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-pink-500">
-                  <ExternalLink className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900 text-sm">Payment Page</p>
-                  <p className="text-xs text-slate-500">Your public pay link</p>
-                </div>
-                <ArrowUpRight className="h-4 w-4 text-slate-300 ml-auto" />
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href="/dashboard/transactions">
-            <Card className="border-slate-100 hover:border-emerald-200 hover:shadow-md transition-all cursor-pointer">
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500">
-                  <ArrowLeftRight className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900 text-sm">All Transactions</p>
-                  <p className="text-xs text-slate-500">Full history</p>
-                </div>
-                <ArrowUpRight className="h-4 w-4 text-slate-300 ml-auto" />
-              </CardContent>
-            </Card>
-          </Link>
+          {quickActions.map((a) => (
+            <Link key={a.label} href={a.href} target={a.external ? "_blank" : undefined}
+              className="glass glass-hover rounded-2xl p-5 flex items-center gap-4">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${a.color} shrink-0`}>
+                <a.icon className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="font-semibold text-white text-sm">{a.label}</p>
+                <p className="text-xs text-slate-500">{a.sub}</p>
+              </div>
+              <ArrowUpRight className="h-4 w-4 text-slate-600 ml-auto" />
+            </Link>
+          ))}
         </div>
 
         {/* Recent transactions */}
-        <Card className="border-slate-100">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-base">Recent Transactions</CardTitle>
-            <Link href="/dashboard/transactions">
-              <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">
-                View all
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            {transactions.length === 0 ? (
-              <div className="py-12 text-center text-slate-400">
-                <ArrowLeftRight className="h-8 w-8 mx-auto mb-3 opacity-50" />
-                <p className="text-sm font-medium">No transactions yet</p>
-                <p className="text-xs mt-1">Share your QR code to start receiving payments</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-50">
-                {transactions.map((tx) => (
-                  <div key={tx.id} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors">
-                    <div className={`flex h-9 w-9 items-center justify-center rounded-full ${
-                      tx.currency === "SOL" ? "bg-violet-100" : "bg-emerald-100"
-                    }`}>
-                      <span className="text-xs font-bold text-slate-600">
-                        {tx.currency === "SOL" ? "◎" : "$"}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">
-                        {tx.payer_name || "Anonymous"}
-                      </p>
-                      <p className="text-xs text-slate-400">{formatRelativeTime(tx.created_at)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-slate-900">
-                        +{formatCurrency(tx.amount, tx.currency)}
-                      </p>
-                      <Badge
-                        variant={tx.status === "confirmed" ? "success" : tx.status === "pending" ? "warning" : "destructive"}
-                        className="text-[10px]"
-                      >
-                        {tx.status}
-                      </Badge>
-                    </div>
-                    {tx.tx_signature && (
-                      <a
-                        href={getSolanaExplorerUrl(tx.tx_signature)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-slate-300 hover:text-blue-500 transition-colors"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    )}
+        <div className="glass rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--border)" }}>
+            <h2 className="text-sm font-bold text-white">Recent Transactions</h2>
+            <Link href="/dashboard/transactions" className="text-xs font-medium text-purple-400 hover:text-purple-300">View all</Link>
+          </div>
+          {!recentTx?.length ? (
+            <div className="py-14 text-center">
+              <ArrowLeftRight className="h-8 w-8 mx-auto text-slate-700 mb-3" />
+              <p className="text-sm text-slate-500 font-medium">No transactions yet</p>
+              <p className="text-xs text-slate-600 mt-1">Share your QR code to start receiving payments</p>
+            </div>
+          ) : (
+            <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+              {(recentTx as Transaction[]).map((tx) => (
+                <div key={tx.id} className="flex items-center gap-4 px-6 py-4 hover:bg-white/2 transition-colors">
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-full shrink-0 ${tx.currency === "SOL" ? "bg-purple-500/15" : "bg-emerald-500/15"}`}>
+                    <span className={`text-sm font-bold ${tx.currency === "SOL" ? "text-purple-400" : "text-emerald-400"}`}>
+                      {tx.currency === "SOL" ? "◎" : "$"}
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{tx.payer_name || "Anonymous"}</p>
+                    <p className="text-xs text-slate-500">{formatRelativeTime(tx.created_at)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-white">+{formatCurrency(tx.amount, tx.currency)}</p>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${tx.status === "confirmed" ? "text-emerald-400 bg-emerald-400/10" : tx.status === "pending" ? "text-amber-400 bg-amber-400/10" : "text-red-400 bg-red-400/10"}`}>
+                      {tx.status}
+                    </span>
+                  </div>
+                  {tx.tx_signature && (
+                    <a href={getSolanaExplorerUrl(tx.tx_signature)} target="_blank" rel="noopener noreferrer" className="text-slate-600 hover:text-purple-400 transition-colors">
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

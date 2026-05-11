@@ -1,359 +1,246 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import {
-  PublicKey,
-  Transaction,
-  SystemProgram,
-  LAMPORTS_PER_SOL,
-} from "@solana/web3.js";
-import {
-  getAssociatedTokenAddress,
-  createTransferCheckedInstruction,
-  getMint,
-} from "@solana/spl-token";
-import {
-  CheckCircle2, Zap, MapPin, Building2,
-  ArrowLeft, ExternalLink, Loader2, Info,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { getAssociatedTokenAddress, createTransferCheckedInstruction, getMint } from "@solana/spl-token";
+import { CheckCircle2, Zap, MapPin, ArrowLeft, ExternalLink, Info, Stethoscope, ShoppingBag, Building2 } from "lucide-react";
 import { Merchant, Currency } from "@/types";
 import { USDT_MINT_ADDRESS, NETWORK } from "@/lib/solana";
-import { formatCurrency, BUSINESS_TYPES, getSolanaExplorerUrl as getExplorerUrl } from "@/lib/utils";
+import { formatCurrency, BUSINESS_TYPES, getSolanaExplorerUrl } from "@/lib/utils";
 import { SolanaWalletProvider } from "@/components/wallet/wallet-provider";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
-interface PaymentClientProps {
-  merchant: Merchant;
-}
+interface PaymentClientProps { merchant: Merchant }
+
+const QUICK_AMOUNTS: Record<Currency, number[]> = {
+  SOL: [0.01, 0.05, 0.1, 0.5],
+  USDT: [5, 10, 20, 50],
+};
+
+const typeIcons: Record<string, typeof Building2> = {
+  clinic: Stethoscope, hospital: Building2, pharmacy: Stethoscope,
+  dental: Stethoscope, lab: Stethoscope, retail: ShoppingBag,
+  restaurant: ShoppingBag, other: Building2,
+};
 
 function PaymentForm({ merchant }: PaymentClientProps) {
   const { connection } = useConnection();
   const { publicKey, sendTransaction, connected } = useWallet();
-
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState<Currency>("SOL");
+  const [currency, setCurrency] = useState<Currency>("USDT");
   const [loading, setLoading] = useState(false);
   const [txSignature, setTxSignature] = useState<string | null>(null);
-  const [step, setStep] = useState<"form" | "confirm" | "success">("form");
+  const [solPrice, setSolPrice] = useState(150);
+  const [success, setSuccess] = useState(false);
 
-  const businessTypeLabel = BUSINESS_TYPES.find((t) => t.value === merchant.business_type)?.label || merchant.business_type;
+  // Fetch live SOL price
+  useEffect(() => {
+    fetch("/api/prices").then(r => r.json()).then(d => {
+      if (d?.SOL?.usd) setSolPrice(d.SOL.usd);
+    }).catch(() => {});
+  }, []);
 
-  const ugxRate = currency === "SOL" ? 390000 : 3700;
+  const ugxRate = currency === "SOL" ? solPrice * 3700 : 3700;
   const ugxAmount = parseFloat(amount || "0") * ugxRate;
 
   const handlePayment = useCallback(async () => {
-    if (!publicKey || !amount) return;
-
+    if (!publicKey || !amount || parseFloat(amount) <= 0) return;
     setLoading(true);
     try {
       const recipientPubkey = new PublicKey(merchant.wallet_address);
       const amountNum = parseFloat(amount);
-      let transaction = new Transaction();
+      let tx = new Transaction();
 
       if (currency === "SOL") {
-        transaction.add(
-          SystemProgram.transfer({
-            fromPubkey: publicKey,
-            toPubkey: recipientPubkey,
-            lamports: Math.floor(amountNum * LAMPORTS_PER_SOL),
-          })
-        );
+        tx.add(SystemProgram.transfer({ fromPubkey: publicKey, toPubkey: recipientPubkey, lamports: Math.floor(amountNum * LAMPORTS_PER_SOL) }));
       } else {
         const mintPubkey = new PublicKey(USDT_MINT_ADDRESS[NETWORK]);
         const mintInfo = await getMint(connection, mintPubkey);
         const senderAta = await getAssociatedTokenAddress(mintPubkey, publicKey);
         const recipientAta = await getAssociatedTokenAddress(mintPubkey, recipientPubkey);
-
-        transaction.add(
-          createTransferCheckedInstruction(
-            senderAta,
-            mintPubkey,
-            recipientAta,
-            publicKey,
-            BigInt(Math.floor(amountNum * 10 ** mintInfo.decimals)),
-            mintInfo.decimals
-          )
-        );
+        tx.add(createTransferCheckedInstruction(senderAta, mintPubkey, recipientAta, publicKey, BigInt(Math.floor(amountNum * 10 ** mintInfo.decimals)), mintInfo.decimals));
       }
 
       const { blockhash } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
-      transaction.feePayer = publicKey;
+      tx.recentBlockhash = blockhash;
+      tx.feePayer = publicKey;
 
-      const signature = await sendTransaction(transaction, connection);
-      await connection.confirmTransaction(signature, "confirmed");
+      const sig = await sendTransaction(tx, connection);
+      await connection.confirmTransaction(sig, "confirmed");
 
-      // Save transaction to Supabase
       await fetch("/api/transactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          merchant_id: merchant.id,
-          amount: amountNum,
-          currency,
-          tx_signature: signature,
-          payer_wallet: publicKey.toBase58(),
-          ugx_equivalent: ugxAmount,
-          status: "confirmed",
-        }),
+        body: JSON.stringify({ merchant_id: merchant.id, amount: amountNum, currency, tx_signature: sig, payer_wallet: publicKey.toBase58(), ugx_equivalent: ugxAmount, status: "confirmed" }),
       });
 
-      setTxSignature(signature);
-      setStep("success");
-      toast.success("Payment sent!");
+      setTxSignature(sig);
+      setSuccess(true);
+      toast.success("Payment confirmed!");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Payment failed";
-      if (message.includes("User rejected")) {
-        toast.error("Transaction cancelled");
-      } else {
-        toast.error(message);
-      }
+      const msg = err instanceof Error ? err.message : "Payment failed";
+      if (msg.includes("User rejected")) toast.error("Transaction cancelled");
+      else toast.error(msg);
     } finally {
       setLoading(false);
     }
   }, [publicKey, amount, currency, merchant, connection, sendTransaction, ugxAmount]);
 
-  if (step === "success" && txSignature) {
+  if (success && txSignature) {
     return (
-      <div className="text-center py-8">
-        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-lg">
-          <CheckCircle2 className="h-10 w-10 text-white" />
+      <div className="text-center py-6">
+        <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full glow-green" style={{ background: "rgba(20,241,149,0.15)", border: "2px solid rgba(20,241,149,0.4)" }}>
+          <CheckCircle2 className="h-10 w-10" style={{ color: "var(--green)" }} />
         </div>
-        <h2 className="text-2xl font-extrabold text-slate-900 mb-2">Payment Sent!</h2>
-        <p className="text-slate-500 mb-1">
-          You paid <span className="font-semibold text-slate-700">{amount} {currency}</span> to
-        </p>
-        <p className="font-semibold text-slate-900 mb-6">{merchant.name}</p>
+        <h2 className="text-2xl font-black text-white mb-2">Payment Confirmed!</h2>
+        <p className="text-slate-400 mb-1">You paid <span className="font-bold text-white">{amount} {currency}</span></p>
+        <p className="text-sm text-slate-500 mb-1">to <span className="font-semibold text-slate-300">{merchant.name}</span></p>
+        <p className="text-xs text-slate-600 mb-6">≈ {formatCurrency(ugxAmount, "UGX")}</p>
 
-        <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-4 mb-6 text-left">
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-slate-500">Amount</span>
-              <span className="font-semibold">{amount} {currency}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Est. UGX</span>
-              <span className="font-semibold">{formatCurrency(ugxAmount, "UGX")}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Network</span>
-              <Badge variant="success">Confirmed</Badge>
-            </div>
-          </div>
-        </div>
-
-        <a
-          href={getExplorerUrl(txSignature)}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Button variant="outline" size="lg" className="w-full mb-3">
-            <ExternalLink className="h-4 w-4" />
-            View on Solana Explorer
-          </Button>
+        <a href={getSolanaExplorerUrl(txSignature)} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-5 py-2.5 text-sm font-semibold text-slate-300 hover:bg-white/5 transition-colors w-full justify-center mb-3">
+          <ExternalLink className="h-4 w-4" /> View on Solana Explorer
         </a>
-        <Button
-          variant="ghost"
-          size="lg"
-          className="w-full"
-          onClick={() => { setStep("form"); setAmount(""); setTxSignature(null); }}
-        >
+        <button onClick={() => { setSuccess(false); setAmount(""); setTxSignature(null); }}
+          className="w-full rounded-xl py-2.5 text-sm font-medium text-slate-500 hover:text-slate-300 transition-colors">
           Make another payment
-        </Button>
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Currency selector */}
+    <div className="space-y-5">
+      {/* Currency */}
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-2">Pay with</label>
-        <div className="grid grid-cols-2 gap-3">
-          {(["SOL", "USDT"] as Currency[]).map((c) => (
-            <button
-              key={c}
-              onClick={() => setCurrency(c)}
-              className={`flex items-center justify-center gap-2 rounded-xl border-2 py-3 px-4 text-sm font-semibold transition-all ${
-                currency === c
-                  ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-              }`}
-            >
-              <span className="text-base">{c === "SOL" ? "◎" : "$"}</span>
-              {c}
+        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Pay with</label>
+        <div className="grid grid-cols-2 gap-2">
+          {(["USDT", "SOL"] as Currency[]).map((c) => (
+            <button key={c} onClick={() => setCurrency(c)}
+              className={`flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all border ${currency === c ? "border-purple-500/50 text-white" : "border-white/8 text-slate-500 hover:border-white/15"}`}
+              style={currency === c ? { background: "rgba(153,69,255,0.12)" } : { background: "var(--bg-input)" }}>
+              <span className="text-base">{c === "SOL" ? "◎" : "$"}</span> {c}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Amount input */}
+      {/* Amount */}
       <div>
-        <Input
-          label="Amount"
-          type="number"
-          placeholder={`0.00 ${currency}`}
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          min="0"
-          step={currency === "SOL" ? "0.001" : "0.01"}
-        />
+        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Amount</label>
+        <div className="relative">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">{currency === "SOL" ? "◎" : "$"}</span>
+          <input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} min="0"
+            className="w-full rounded-xl pl-9 pr-4 py-3.5 text-lg font-bold text-white placeholder-slate-700 border border-white/8 outline-none focus:border-purple-500/50 transition-colors"
+            style={{ background: "var(--bg-input)" }} />
+        </div>
         {amount && parseFloat(amount) > 0 && (
           <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
-            <Info className="h-3.5 w-3.5" />
+            <Info className="h-3 w-3" />
             ≈ {formatCurrency(ugxAmount, "UGX")} at current rate
           </div>
         )}
       </div>
 
       {/* Quick amounts */}
-      {currency === "USDT" && (
-        <div className="flex gap-2">
-          {[5, 10, 20, 50].map((v) => (
-            <button
-              key={v}
-              onClick={() => setAmount(v.toString())}
-              className="flex-1 rounded-lg border border-slate-200 bg-white py-1.5 text-xs font-medium text-slate-600 hover:border-blue-300 hover:text-blue-600 transition-colors"
-            >
-              ${v}
-            </button>
-          ))}
-        </div>
-      )}
-      {currency === "SOL" && (
-        <div className="flex gap-2">
-          {[0.01, 0.05, 0.1, 0.5].map((v) => (
-            <button
-              key={v}
-              onClick={() => setAmount(v.toString())}
-              className="flex-1 rounded-lg border border-slate-200 bg-white py-1.5 text-xs font-medium text-slate-600 hover:border-blue-300 hover:text-blue-600 transition-colors"
-            >
-              ◎{v}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex gap-2">
+        {QUICK_AMOUNTS[currency].map(v => (
+          <button key={v} onClick={() => setAmount(v.toString())}
+            className="flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors border border-white/8 hover:border-purple-500/40 text-slate-400 hover:text-white"
+            style={{ background: "var(--bg-input)" }}>
+            {currency === "SOL" ? `◎${v}` : `$${v}`}
+          </button>
+        ))}
+      </div>
 
-      {/* Discount notice */}
+      {/* Discount */}
       {merchant.twende_discount > 0 && (
-        <div className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3 flex items-start gap-2.5">
-          <span className="text-blue-600 font-bold text-sm shrink-0">%</span>
-          <p className="text-xs text-blue-700">
-            <span className="font-semibold">{merchant.twende_discount}% Twende discount</span> — Ask the cashier to apply your discount when paying with Twende.
+        <div className="rounded-xl px-4 py-3 flex items-start gap-2.5 border" style={{ background: "rgba(153,69,255,0.06)", borderColor: "rgba(153,69,255,0.2)" }}>
+          <span className="text-purple-400 font-black text-sm shrink-0">%</span>
+          <p className="text-xs text-purple-300">
+            <span className="font-bold">{merchant.twende_discount}% Twende discount</span> — ask the cashier to apply your discount when you show this payment.
           </p>
         </div>
       )}
 
-      {/* Wallet + Pay button */}
+      {/* Wallet connect or Pay */}
       {!connected ? (
-        <div className="space-y-3">
-          <p className="text-center text-sm text-slate-500">Connect your Phantom wallet to pay</p>
-          <div className="flex justify-center">
-            <WalletMultiButton
-              style={{
-                background: "linear-gradient(135deg, #2563eb, #7c3aed)",
-                borderRadius: "12px",
-                height: "48px",
-                fontSize: "14px",
-                fontWeight: 600,
-                width: "100%",
-              }}
-            />
-          </div>
+        <div>
+          <p className="text-center text-xs text-slate-500 mb-3">Connect Phantom wallet to pay</p>
+          <WalletMultiButton style={{
+            background: "linear-gradient(135deg, #9945FF, #2563EB)",
+            borderRadius: "12px", height: "52px", fontSize: "14px",
+            fontWeight: 700, width: "100%", justifyContent: "center",
+          }} />
         </div>
       ) : (
-        <Button
-          className="w-full"
-          size="lg"
-          onClick={handlePayment}
-          loading={loading}
-          disabled={!amount || parseFloat(amount) <= 0}
-        >
-          {loading ? "Confirming..." : `Pay ${amount || "0"} ${currency}`}
-        </Button>
+        <button onClick={handlePayment} disabled={loading || !amount || parseFloat(amount) <= 0}
+          className="w-full rounded-xl gradient-twende py-4 text-sm font-bold text-white hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2">
+          {loading && <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />}
+          {loading ? "Confirming on Solana..." : `Pay ${amount || "0"} ${currency}`}
+        </button>
       )}
 
-      <p className="text-center text-xs text-slate-400">
-        Powered by Solana · Instant settlement
-      </p>
+      <p className="text-center text-xs text-slate-600">Secured by Solana · Instant settlement</p>
     </div>
   );
 }
 
 export function PaymentClient({ merchant }: PaymentClientProps) {
-  const businessTypeLabel = BUSINESS_TYPES.find((t) => t.value === merchant.business_type)?.label || merchant.business_type;
+  const TypeIcon = typeIcons[merchant.business_type] || Building2;
+  const typeLabel = BUSINESS_TYPES.find(t => t.value === merchant.business_type)?.label || merchant.business_type;
 
   return (
     <SolanaWalletProvider>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-violet-50/30 flex flex-col">
+      <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
         {/* Header */}
-        <header className="px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm font-medium">Twende</span>
+        <header className="px-4 py-4 flex items-center justify-between border-b" style={{ borderColor: "var(--border)" }}>
+          <Link href="/" className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm font-medium">
+            <ArrowLeft className="h-4 w-4" /> Twende
           </Link>
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-violet-600">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg gradient-twende">
             <Zap className="h-3.5 w-3.5 text-white" />
           </div>
         </header>
 
-        {/* Main */}
-        <main className="flex-1 flex items-start justify-center px-4 py-6">
-          <div className="w-full max-w-md">
-            {/* Merchant Card */}
-            <Card className="border-slate-100 shadow-lg mb-6">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 shadow-md">
-                    <Building2 className="h-7 w-7 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h1 className="text-lg font-bold text-slate-900 truncate">{merchant.name}</h1>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <Badge variant="secondary" className="text-xs">{businessTypeLabel}</Badge>
-                    </div>
-                    <div className="flex items-center gap-1 mt-1 text-xs text-slate-500">
-                      <MapPin className="h-3 w-3" />
-                      {merchant.location}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-xs text-emerald-600 font-medium">Active</span>
+        <main className="flex justify-center px-4 py-8">
+          <div className="w-full max-w-sm space-y-4">
+            {/* Merchant card */}
+            <div className="glass rounded-2xl p-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl gradient-twende shrink-0">
+                  <TypeIcon className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-base font-bold text-white truncate">{merchant.name}</h1>
+                  <p className="text-xs text-slate-500">{typeLabel}</p>
+                  <div className="flex items-center gap-1 mt-0.5 text-xs text-slate-600">
+                    <MapPin className="h-3 w-3" />
+                    {merchant.location}
                   </div>
                 </div>
-                {merchant.description && (
-                  <p className="mt-3 text-sm text-slate-500 border-t border-slate-50 pt-3">
-                    {merchant.description}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs text-emerald-400 font-medium">Live</span>
+                </div>
+              </div>
+              {merchant.description && (
+                <p className="mt-3 text-xs text-slate-500 border-t pt-3" style={{ borderColor: "var(--border)" }}>
+                  {merchant.description}
+                </p>
+              )}
+            </div>
 
-            {/* Payment Card */}
-            <Card className="border-slate-100 shadow-lg">
-              <CardContent className="p-6">
-                <h2 className="text-base font-bold text-slate-900 mb-5">Make a Payment</h2>
-                <PaymentForm merchant={merchant} />
-              </CardContent>
-            </Card>
+            {/* Payment form */}
+            <div className="glass rounded-2xl p-5">
+              <h2 className="text-sm font-bold text-white mb-5">Make a Payment</h2>
+              <PaymentForm merchant={merchant} />
+            </div>
           </div>
         </main>
-
-        {/* Footer */}
-        <footer className="py-4 text-center">
-          <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
-            <Zap className="h-3 w-3 text-blue-500" />
-            Secured by Solana blockchain
-          </div>
-        </footer>
       </div>
     </SolanaWalletProvider>
   );

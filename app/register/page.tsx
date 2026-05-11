@@ -3,347 +3,273 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Eye, EyeOff, Mail, Lock, Building2, MapPin,
-  Zap, ArrowRight, Wallet, CheckCircle2,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Eye, EyeOff, Mail, Lock, Building2, Wallet, Zap, ArrowRight, CheckCircle2, ChevronLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { isValidSolanaAddress, BUSINESS_TYPES, UGANDA_LOCATIONS } from "@/lib/utils";
 import toast from "react-hot-toast";
 
-const STEPS = ["Account", "Business", "Wallet", "Done"];
+const STEPS = ["Account", "Business", "Wallet"];
 
 export default function RegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
-    businessName: "",
-    businessType: "",
-    location: "",
-    phone: "",
-    walletAddress: "",
-    description: "",
-  });
-
+  const [showPw, setShowPw] = useState(false);
+  const [form, setForm] = useState({ email: "", password: "", confirmPassword: "", businessName: "", businessType: "", location: "", phone: "", walletAddress: "", description: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [done, setDone] = useState(false);
 
-  const update = (key: string, value: string) => {
-    setForm((f) => ({ ...f, [key]: value }));
-    setErrors((e) => ({ ...e, [key]: "" }));
-  };
+  const set = (k: string, v: string) => { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: "" })); };
 
   const validateStep = () => {
-    const newErrors: Record<string, string> = {};
+    const e: Record<string, string> = {};
     if (step === 0) {
-      if (!form.email) newErrors.email = "Email is required";
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) newErrors.email = "Enter a valid email";
-      if (!form.password) newErrors.password = "Password is required";
-      else if (form.password.length < 8) newErrors.password = "Minimum 8 characters";
-      if (form.password !== form.confirmPassword) newErrors.confirmPassword = "Passwords don't match";
+      if (!form.email) e.email = "Required"; else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Invalid email";
+      if (!form.password) e.password = "Required"; else if (form.password.length < 8) e.password = "Min 8 characters";
+      if (form.password !== form.confirmPassword) e.confirmPassword = "Passwords don't match";
     }
     if (step === 1) {
-      if (!form.businessName) newErrors.businessName = "Business name is required";
-      if (!form.businessType) newErrors.businessType = "Select a business type";
-      if (!form.location) newErrors.location = "Select your location";
+      if (!form.businessName) e.businessName = "Required";
+      if (!form.businessType) e.businessType = "Select a type";
+      if (!form.location) e.location = "Select location";
     }
     if (step === 2) {
-      if (!form.walletAddress) newErrors.walletAddress = "Wallet address is required";
-      else if (!isValidSolanaAddress(form.walletAddress)) newErrors.walletAddress = "Enter a valid Solana wallet address";
+      if (!form.walletAddress) e.walletAddress = "Required";
+      else if (!isValidSolanaAddress(form.walletAddress)) e.walletAddress = "Invalid Solana address";
     }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(e);
+    return !Object.keys(e).length;
   };
 
-  const handleNext = () => {
-    if (validateStep()) setStep((s) => s + 1);
-  };
+  const next = () => { if (validateStep()) setStep(s => s + 1); };
 
-  const handleSubmit = async () => {
+  const submit = async () => {
     setLoading(true);
     try {
       const supabase = createClient();
-
-      // Step 1: Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
+        email: form.email, password: form.password,
         options: { data: { full_name: form.businessName } },
       });
       if (authError) throw authError;
       if (!authData.user) throw new Error("Failed to create account");
 
-      // Step 2: Create merchant profile via server API route
-      // (uses server-side session so RLS auth.uid() resolves correctly)
       const res = await fetch("/api/merchants/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.businessName,
-          business_type: form.businessType,
-          location: form.location,
-          phone: form.phone || null,
-          wallet_address: form.walletAddress,
-          description: form.description || null,
-        }),
+        body: JSON.stringify({ name: form.businessName, business_type: form.businessType, location: form.location, phone: form.phone || null, wallet_address: form.walletAddress, description: form.description || null }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to create business profile");
-
-      setStep(3);
+      setDone(true);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Registration failed";
-      toast.error(message);
+      toast.error(err instanceof Error ? err.message : "Registration failed");
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex">
-      {/* Left Panel */}
-      <div className="hidden lg:flex lg:w-5/12 bg-gradient-to-br from-blue-600 to-violet-700 flex-col justify-between p-12 text-white">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20">
-            <Zap className="h-5 w-5 text-white" />
+  if (done) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--bg-primary)" }}>
+        <div className="glass rounded-2xl p-10 max-w-md w-full text-center">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full gradient-twende glow-purple">
+            <CheckCircle2 className="h-10 w-10 text-white" />
           </div>
-          <span className="text-lg font-bold">Twende dApp</span>
-        </Link>
+          <h1 className="text-2xl font-black text-white mb-2">You&apos;re live!</h1>
+          <p className="text-slate-400 mb-1">
+            <span className="font-semibold text-white">{form.businessName}</span> is now on Twende.
+          </p>
+          <p className="text-sm text-slate-500 mb-8">Start accepting SOL and USDT from your customers.</p>
+          <button onClick={() => router.push("/dashboard")}
+            className="w-full rounded-xl gradient-twende py-3.5 text-sm font-bold text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+            Go to Dashboard <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-        {/* Step indicator */}
-        <div className="space-y-6">
-          {STEPS.slice(0, 3).map((label, i) => (
+  return (
+    <div className="min-h-screen flex" style={{ background: "var(--bg-primary)" }}>
+      {/* Left */}
+      <div className="hidden lg:flex lg:w-5/12 flex-col justify-between p-12 relative overflow-hidden" style={{ background: "var(--bg-secondary)" }}>
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-purple-600/20 blur-3xl" />
+        </div>
+        <Link href="/" className="relative flex items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-twende"><Zap className="h-4 w-4 text-white" /></div>
+          <span className="font-bold text-white">Twende dApp</span>
+        </Link>
+        <div className="relative space-y-6">
+          {STEPS.map((label, i) => (
             <div key={label} className="flex items-center gap-4">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${
-                i < step ? "border-white bg-white text-blue-600" :
-                i === step ? "border-white bg-transparent text-white" :
-                "border-white/30 bg-transparent text-white/40"
-              }`}>
-                {i < step ? <CheckCircle2 className="h-5 w-5" /> : <span className="text-sm font-bold">{i + 1}</span>}
+              <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${i < step ? "border-emerald-400 bg-emerald-400/15" : i === step ? "border-purple-400 bg-purple-400/15" : "border-white/10"}`}>
+                {i < step ? <CheckCircle2 className="h-5 w-5 text-emerald-400" /> : <span className={`text-sm font-bold ${i === step ? "text-purple-400" : "text-slate-600"}`}>{i + 1}</span>}
               </div>
               <div>
-                <p className={`text-sm font-semibold ${i <= step ? "text-white" : "text-white/40"}`}>{label}</p>
-                <p className={`text-xs ${i <= step ? "text-blue-200" : "text-white/30"}`}>
-                  {["Create your account", "Tell us about your business", "Connect your Solana wallet"][i]}
-                </p>
+                <p className={`text-sm font-semibold ${i <= step ? "text-white" : "text-slate-600"}`}>{label}</p>
+                <p className={`text-xs ${i <= step ? "text-slate-400" : "text-slate-700"}`}>{["Create your account", "Your business details", "Connect Solana wallet"][i]}</p>
               </div>
             </div>
           ))}
         </div>
-
-        <p className="text-sm text-blue-200">Free to register. No monthly fees.</p>
+        <p className="relative text-sm text-slate-600">Free to register. No monthly fees.</p>
       </div>
 
-      {/* Right Panel */}
-      <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-8 lg:px-12 bg-white overflow-y-auto">
-        <div className="mx-auto w-full max-w-md">
-          {/* Mobile logo */}
-          <div className="lg:hidden mb-6">
+      {/* Right */}
+      <div className="flex-1 flex items-center justify-center py-12 px-4 sm:px-8 overflow-y-auto">
+        <div className="w-full max-w-md">
+          <div className="lg:hidden mb-6 flex justify-center">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-violet-600">
-                <Zap className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-base font-bold text-slate-900">Twende dApp</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-twende"><Zap className="h-4 w-4 text-white" /></div>
+              <span className="font-bold text-white">Twende dApp</span>
             </Link>
           </div>
 
-          {step < 3 && (
-            <div className="mb-8">
-              <div className="flex items-center gap-2 mb-4">
-                {STEPS.slice(0, 3).map((_, i) => (
-                  <div key={i} className={`h-1.5 flex-1 rounded-full transition-all ${i <= step ? "bg-gradient-to-r from-blue-600 to-violet-600" : "bg-slate-100"}`} />
-                ))}
-              </div>
-              <p className="text-xs font-medium text-slate-400">Step {step + 1} of 3</p>
-            </div>
-          )}
+          {/* Progress */}
+          <div className="flex gap-1.5 mb-6">
+            {STEPS.map((_, i) => (
+              <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-500 ${i <= step ? "gradient-twende" : "bg-white/8"}`} />
+            ))}
+          </div>
+          <p className="text-xs font-medium text-slate-500 mb-6">Step {step + 1} of {STEPS.length}</p>
 
-          {/* Step 0: Account */}
-          {step === 0 && (
-            <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 mb-1">Create your account</h1>
-              <p className="text-sm text-slate-500 mb-6">Start accepting crypto payments today</p>
-              <div className="space-y-4">
-                <Input
-                  label="Email address"
-                  type="email"
-                  placeholder="you@business.com"
-                  value={form.email}
-                  onChange={(e) => update("email", e.target.value)}
-                  error={errors.email}
-                  icon={<Mail className="h-4 w-4" />}
-                />
-                <div className="relative">
-                  <Input
-                    label="Password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Min. 8 characters"
-                    value={form.password}
-                    onChange={(e) => update("password", e.target.value)}
-                    error={errors.password}
-                    icon={<Lock className="h-4 w-4" />}
-                  />
-                  <button type="button" className="absolute right-3 top-9 text-slate-400" onClick={() => setShowPassword(!showPassword)}>
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          <div className="glass rounded-2xl p-8">
+            {/* Step 0 */}
+            {step === 0 && (
+              <>
+                <h1 className="text-2xl font-black text-white mb-1">Create account</h1>
+                <p className="text-sm text-slate-400 mb-6">Start accepting crypto payments today</p>
+                <div className="space-y-4">
+                  <Field label="Email" error={errors.email}>
+                    <DInput type="email" placeholder="you@business.com" value={form.email} onChange={v => set("email", v)} icon={<Mail className="h-4 w-4" />} />
+                  </Field>
+                  <Field label="Password" error={errors.password}>
+                    <div className="relative">
+                      <DInput type={showPw ? "text" : "password"} placeholder="Min. 8 characters" value={form.password} onChange={v => set("password", v)} icon={<Lock className="h-4 w-4" />} />
+                      <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500"><EyeOff className="h-4 w-4" /></button>
+                    </div>
+                  </Field>
+                  <Field label="Confirm Password" error={errors.confirmPassword}>
+                    <DInput type="password" placeholder="Re-enter password" value={form.confirmPassword} onChange={v => set("confirmPassword", v)} icon={<Lock className="h-4 w-4" />} />
+                  </Field>
+                </div>
+                <Btn onClick={next} className="mt-6">Continue <ArrowRight className="h-4 w-4" /></Btn>
+              </>
+            )}
+
+            {/* Step 1 */}
+            {step === 1 && (
+              <>
+                <h1 className="text-2xl font-black text-white mb-1">Your business</h1>
+                <p className="text-sm text-slate-400 mb-6">Tell us who&apos;s accepting payments</p>
+                <div className="space-y-4">
+                  <Field label="Business name" error={errors.businessName}>
+                    <DInput placeholder="e.g. Solana Medical Services" value={form.businessName} onChange={v => set("businessName", v)} icon={<Building2 className="h-4 w-4" />} />
+                  </Field>
+                  <Field label="Business type" error={errors.businessType}>
+                    <select value={form.businessType} onChange={e => set("businessType", e.target.value)}
+                      className="w-full rounded-xl px-4 py-3 text-sm text-white border border-white/8 outline-none appearance-none"
+                      style={{ background: "var(--bg-input)" }}>
+                      <option value="">Select type...</option>
+                      {BUSINESS_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Location" error={errors.location}>
+                    <select value={form.location} onChange={e => set("location", e.target.value)}
+                      className="w-full rounded-xl px-4 py-3 text-sm text-white border border-white/8 outline-none appearance-none"
+                      style={{ background: "var(--bg-input)" }}>
+                      <option value="">Select location...</option>
+                      {UGANDA_LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Phone (optional)">
+                    <DInput placeholder="+256 7XX XXX XXX" value={form.phone} onChange={v => set("phone", v)} />
+                  </Field>
+                </div>
+                <div className="flex gap-3 mt-6">
+                  <button onClick={() => setStep(0)} className="flex-1 rounded-xl border border-white/10 py-3.5 text-sm font-semibold text-slate-400 hover:bg-white/5 flex items-center justify-center gap-2">
+                    <ChevronLeft className="h-4 w-4" /> Back
                   </button>
+                  <Btn onClick={next} className="flex-1">Continue <ArrowRight className="h-4 w-4" /></Btn>
                 </div>
-                <Input
-                  label="Confirm Password"
-                  type="password"
-                  placeholder="Re-enter your password"
-                  value={form.confirmPassword}
-                  onChange={(e) => update("confirmPassword", e.target.value)}
-                  error={errors.confirmPassword}
-                  icon={<Lock className="h-4 w-4" />}
-                />
-              </div>
-              <Button className="w-full mt-6" size="lg" onClick={handleNext}>
-                Continue <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
+              </>
+            )}
 
-          {/* Step 1: Business */}
-          {step === 1 && (
-            <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 mb-1">Your business</h1>
-              <p className="text-sm text-slate-500 mb-6">Tell us about the business accepting payments</p>
-              <div className="space-y-4">
-                <Input
-                  label="Business name"
-                  placeholder="e.g. Solana Medical Services"
-                  value={form.businessName}
-                  onChange={(e) => update("businessName", e.target.value)}
-                  error={errors.businessName}
-                  icon={<Building2 className="h-4 w-4" />}
-                />
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Business type</label>
-                  <Select value={form.businessType} onValueChange={(v) => update("businessType", v)}>
-                    <SelectTrigger className={errors.businessType ? "border-red-400" : ""}>
-                      <SelectValue placeholder="Select business type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BUSINESS_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.businessType && <p className="mt-1.5 text-xs text-red-500">{errors.businessType}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Location</label>
-                  <Select value={form.location} onValueChange={(v) => update("location", v)}>
-                    <SelectTrigger className={errors.location ? "border-red-400" : ""}>
-                      <SelectValue placeholder="Select your location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {UGANDA_LOCATIONS.map((loc) => (
-                        <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.location && <p className="mt-1.5 text-xs text-red-500">{errors.location}</p>}
-                </div>
-                <Input
-                  label="Phone number (optional)"
-                  placeholder="+256 7XX XXX XXX"
-                  value={form.phone}
-                  onChange={(e) => update("phone", e.target.value)}
-                />
-              </div>
-              <div className="flex gap-3 mt-6">
-                <Button variant="outline" size="lg" className="flex-1" onClick={() => setStep(0)}>Back</Button>
-                <Button size="lg" className="flex-1" onClick={handleNext}>
-                  Continue <ArrowRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Wallet */}
-          {step === 2 && (
-            <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 mb-1">Connect your wallet</h1>
-              <p className="text-sm text-slate-500 mb-6">Payments will be sent directly to this Solana wallet address</p>
-              <div className="mb-4 rounded-xl bg-blue-50 border border-blue-100 p-4">
-                <div className="flex items-start gap-3">
-                  <Wallet className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-                  <div className="text-sm text-blue-700">
-                    <p className="font-semibold mb-1">Use Phantom Wallet</p>
-                    <p className="text-blue-600 text-xs">Download Phantom from phantom.com, create a wallet, and paste your address below. Never share your seed phrase.</p>
+            {/* Step 2 */}
+            {step === 2 && (
+              <>
+                <h1 className="text-2xl font-black text-white mb-1">Solana wallet</h1>
+                <p className="text-sm text-slate-400 mb-6">Payments go directly to this address</p>
+                <div className="mb-4 rounded-xl p-4" style={{ background: "rgba(153,69,255,0.08)", border: "1px solid rgba(153,69,255,0.2)" }}>
+                  <div className="flex items-start gap-3">
+                    <Wallet className="h-5 w-5 text-purple-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-purple-300">Use Phantom Wallet</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Download Phantom at phantom.com, create a wallet, and paste your address below.</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="space-y-4">
-                <Input
-                  label="Solana wallet address"
-                  placeholder="e.g. 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
-                  value={form.walletAddress}
-                  onChange={(e) => update("walletAddress", e.target.value)}
-                  error={errors.walletAddress}
-                  icon={<Wallet className="h-4 w-4" />}
-                />
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Business description (optional)</label>
-                  <textarea
-                    placeholder="Briefly describe your business..."
-                    value={form.description}
-                    onChange={(e) => update("description", e.target.value)}
-                    rows={3}
-                    className="flex w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  />
+                <div className="space-y-4">
+                  <Field label="Wallet address" error={errors.walletAddress}>
+                    <DInput placeholder="e.g. 7xKXtg2CW87d..." value={form.walletAddress} onChange={v => set("walletAddress", v)} icon={<Wallet className="h-4 w-4" />} />
+                  </Field>
+                  <Field label="Description (optional)">
+                    <textarea value={form.description} onChange={e => set("description", e.target.value)} rows={3}
+                      placeholder="Brief description of your business..."
+                      className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 border border-white/8 outline-none resize-none"
+                      style={{ background: "var(--bg-input)" }} />
+                  </Field>
                 </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <Button variant="outline" size="lg" className="flex-1" onClick={() => setStep(1)}>Back</Button>
-                <Button size="lg" className="flex-1" onClick={handleSubmit} loading={loading}>
-                  Register Business
-                </Button>
-              </div>
-            </div>
-          )}
+                <div className="flex gap-3 mt-6">
+                  <button onClick={() => setStep(1)} className="flex-1 rounded-xl border border-white/10 py-3.5 text-sm font-semibold text-slate-400 hover:bg-white/5 flex items-center justify-center gap-2">
+                    <ChevronLeft className="h-4 w-4" /> Back
+                  </button>
+                  <button onClick={submit} disabled={loading}
+                    className="flex-1 rounded-xl gradient-twende py-3.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2">
+                    {loading && <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />}
+                    {loading ? "Creating..." : "Register Business"}
+                  </button>
+                </div>
+              </>
+            )}
 
-          {/* Step 3: Success */}
-          {step === 3 && (
-            <div className="text-center">
-              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-violet-600">
-                <CheckCircle2 className="h-10 w-10 text-white" />
-              </div>
-              <h1 className="text-2xl font-extrabold text-slate-900 mb-2">You&apos;re all set!</h1>
-              <p className="text-slate-500 mb-2">
-                <span className="font-semibold text-slate-700">{form.businessName}</span> is now registered on Twende.
-              </p>
-              <p className="text-sm text-slate-400 mb-8">
-                You can now accept SOL and USDT payments from your customers.
-              </p>
-              <Button size="lg" className="w-full" onClick={() => router.push("/dashboard")}>
-                Go to Dashboard <ArrowRight className="h-4 w-4" />
-              </Button>
-              <p className="mt-4 text-xs text-slate-400">
-                Check your email to verify your account
-              </p>
-            </div>
-          )}
-
-          {step < 3 && (
             <p className="mt-6 text-center text-sm text-slate-500">
-              Already registered?{" "}
-              <Link href="/login" className="font-semibold text-blue-600 hover:text-blue-700">
-                Sign in
-              </Link>
+              Have an account? <Link href="/login" className="font-semibold text-purple-400 hover:text-purple-300">Sign in</Link>
             </p>
-          )}
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">{label}</label>
+      {children}
+      {error && <p className="mt-1.5 text-xs text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+function DInput({ type = "text", placeholder, value, onChange, icon }: { type?: string; placeholder?: string; value: string; onChange: (v: string) => void; icon?: React.ReactNode }) {
+  return (
+    <div className="relative">
+      {icon && <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500">{icon}</span>}
+      <input type={type} placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)}
+        className={`w-full rounded-xl ${icon ? "pl-10" : "pl-4"} pr-4 py-3 text-sm text-white placeholder-slate-600 border border-white/8 outline-none focus:border-purple-500/50 transition-colors`}
+        style={{ background: "var(--bg-input)" }} />
+    </div>
+  );
+}
+
+function Btn({ onClick, children, className = "" }: { onClick: () => void; children: React.ReactNode; className?: string }) {
+  return (
+    <button onClick={onClick} className={`w-full rounded-xl gradient-twende py-3.5 text-sm font-bold text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2 ${className}`}>
+      {children}
+    </button>
   );
 }
